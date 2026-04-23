@@ -110,6 +110,10 @@
       <HintPath>$(MSBuildProjectDirectory)\Libs\NAudio.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="NVorbis">
+      <HintPath>$(UserProfile)\.nuget\packages\nvorbis\0.9.1\lib\net45\NVorbis.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="BGLib.AppFlow">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.AppFlow.dll</HintPath>
       <Private>False</Private>
@@ -119,6 +123,7 @@
     <Compile Include="Plugin.cs" />
     <Compile Include="Configuration\PluginConfig.cs" />
     <Compile Include="BSSidecarAudioController.cs" />
+    <Compile Include="AudioAlignment.cs" />
     <Compile Include="SidecarPlayback.cs" />
     <Compile Include="HarmonyPatches.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -136,6 +141,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="NVorbis">
+      <Version>0.9.1</Version>
+    </PackageReference>
   </ItemGroup>
   <Target Name="ILRepacker" AfterTargets="Build">
     <PropertyGroup>
@@ -145,7 +153,7 @@
       <GameLibsDir>$(GameDir)\Libs</GameLibsDir>
     </PropertyGroup>
     <MakeDir Directories="$(OutputPath)merged" Condition="!Exists('$(OutputPath)merged')" />
-    <Exec Command="&quot;$(ILRepackExe)&quot; /out:&quot;$(OutputPath)merged\$(AssemblyName).dll&quot; /lib:&quot;$(OutputPath).&quot; /lib:&quot;$(GameLibDir)&quot; /lib:&quot;$(GameLibsDir)&quot; /internalize &quot;$(OutputPath)$(AssemblyName).dll&quot; &quot;$(OutputPath)NAudio.dll&quot;" />
+    <Exec Command="&quot;$(ILRepackExe)&quot; /out:&quot;$(OutputPath)merged\$(AssemblyName).dll&quot; /lib:&quot;$(OutputPath).&quot; /lib:&quot;$(GameLibDir)&quot; /lib:&quot;$(GameLibsDir)&quot; /internalize &quot;$(OutputPath)$(AssemblyName).dll&quot; &quot;$(OutputPath)NAudio.dll&quot; &quot;$(OutputPath)NVorbis.dll&quot;" />
     <Copy SourceFiles="$(OutputPath)merged\$(AssemblyName).dll" DestinationFiles="$(OutputPath)$(AssemblyName).dll" />
     <RemoveDir Directories="$(OutputPath)merged" />
   </Target>

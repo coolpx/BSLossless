@@ -10,9 +10,12 @@ namespace BSSidecarAudio
         private AudioClip _audioClip;
         private GameObject _gameObject;
         private bool _disposed;
+        private bool _started;
 
         public bool IsPlaying => _audioSource != null && _audioSource.isPlaying;
         public float Length => _audioClip != null ? _audioClip.length : 0f;
+        public bool IsPrepared => _audioSource != null && _audioClip != null;
+        public bool HasStarted => _started;
 
         public float Time
         {
@@ -26,7 +29,7 @@ namespace BSSidecarAudio
             }
         }
 
-        public void Play(AudioClip clip, float startTime = 0f)
+        public void Prepare(AudioClip clip, float startTime = 0f)
         {
             Stop();
             _audioClip = clip;
@@ -39,7 +42,22 @@ namespace BSSidecarAudio
             _audioSource.volume = 1f;
             _audioSource.spatialBlend = 0f;
             _audioSource.time = Mathf.Clamp(startTime, 0f, clip.length - 0.001f);
+            _started = false;
+        }
+
+        public void Start()
+        {
+            if (_audioSource == null || _started)
+                return;
+
             _audioSource.Play();
+            _started = true;
+        }
+
+        public void Play(AudioClip clip, float startTime = 0f)
+        {
+            Prepare(clip, startTime);
+            Start();
         }
 
         public void Pause()
@@ -50,7 +68,16 @@ namespace BSSidecarAudio
 
         public void Resume()
         {
-            if (_audioSource != null && !_audioSource.isPlaying)
+            if (_audioSource == null)
+                return;
+
+            if (!_started)
+            {
+                Start();
+                return;
+            }
+
+            if (!_audioSource.isPlaying)
                 _audioSource.UnPause();
         }
 
@@ -70,6 +97,7 @@ namespace BSSidecarAudio
                 _gameObject = null;
             }
             _audioSource = null;
+            _started = false;
         }
 
         public void Dispose()

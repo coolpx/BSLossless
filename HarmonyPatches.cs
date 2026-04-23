@@ -9,12 +9,14 @@ namespace BSSidecarAudio
     static class HarmonyPatches
     {
         internal static string PendingFlacPath { get; private set; }
+        internal static string PendingAudioPath { get; private set; }
         internal static float PendingSongTimeOffset { get; private set; }
         internal static bool HasFlac => !string.IsNullOrEmpty(PendingFlacPath);
 
         internal static void ClearPending()
         {
             PendingFlacPath = null;
+            PendingAudioPath = null;
             PendingSongTimeOffset = 0f;
         }
 
@@ -65,6 +67,7 @@ namespace BSSidecarAudio
                     {
                         Plugin.Log.Info($"Found song.flac: {flacPath} (offset={songTimeOffset}s)");
                         PendingFlacPath = flacPath;
+                        PendingAudioPath = audioPath;
                         PendingSongTimeOffset = songTimeOffset;
                     }
                     else
@@ -95,7 +98,7 @@ namespace BSSidecarAudio
             try
             {
                 BSSidecarAudioController.Instance?.StartFlacPlayback(
-                    __instance, PendingFlacPath, PendingSongTimeOffset);
+                    __instance, PendingFlacPath, PendingAudioPath, PendingSongTimeOffset);
             }
             catch (Exception ex)
             {

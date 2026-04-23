@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using HarmonyLib;
-using System.Reflection;
 
 namespace BSSidecarAudio
 {
@@ -17,6 +16,9 @@ namespace BSSidecarAudio
         private bool _originalMute;
         private bool _flacActive;
         private float _songTimeOffset;
+        private float _audioLatency;
+        private float _clipLeadInCompensation;
+        private bool _playbackStarted;
 
         private void Awake()
         {
@@ -53,7 +55,17 @@ namespace BSSidecarAudio
             if (!_flacActive || _playback == null || _syncController == null)
                 return;
 
-            float targetTime = _syncController.songTime - _songTimeOffset;
+            if (!_playbackStarted)
+            {
+                if (!CanStartPreparedPlayback())
+                    return;
+
+                _playback.Time = GetTargetPlaybackTime();
+                _playback.Start();
+                _playbackStarted = true;
+            }
+
+            float targetTime = GetTargetPlaybackTime();
             float currentTime = _playback.Time;
             float diff = targetTime - currentTime;
             float threshold = Configuration.PluginConfig.Instance?.SyncThreshold
@@ -71,7 +83,7 @@ namespace BSSidecarAudio
         }
 
         public void StartFlacPlayback(AudioTimeSyncController syncController,
-            string flacPath, float songTimeOffset)
+            string flacPath, string referenceAudioPath, float songTimeOffset)
         {
             Cleanup();
 
@@ -79,6 +91,8 @@ namespace BSSidecarAudio
             {
                 _syncController = syncController;
                 _songTimeOffset = songTimeOffset;
+                _audioLatency = (float)Traverse.Create(syncController)
+                    .Field("_audioLatency").GetValue();
 
                 var gameSource = (AudioSource)Traverse.Create(syncController)
                     .Field("_audioSource").GetValue();
@@ -94,12 +108,22 @@ namespace BSSidecarAudio
                 }
 
                 var clip = SidecarPlayback.LoadFlacAsAudioClip(flacPath);
+                _clipLeadInCompensation = AudioAlignment
+                    .EstimateLeadInCompensation(referenceAudioPath, flacPath);
                 _playback = new SidecarPlayback();
-                float startTime = syncController.songTime - _songTimeOffset;
-                _playback.Play(clip, startTime);
+                float startTime = GetTargetPlaybackTime();
+                _playback.Prepare(clip, startTime);
                 _flacActive = true;
+                _playbackStarted = false;
 
-                Plugin.Log.Info($"FLAC playback started (offset={_songTimeOffset}s)");
+                if (CanStartPreparedPlayback())
+                {
+                    _playback.Start();
+                    _playbackStarted = true;
+                }
+
+                Plugin.Log.Info(
+                    $"FLAC playback started (offset={_songTimeOffset}s, latency={_audioLatency}s, leadInComp={_clipLeadInCompensation}s)");
             }
             catch (Exception ex)
             {
@@ -117,13 +141,42 @@ namespace BSSidecarAudio
         public void ResumeFlac()
         {
             if (_playback != null && _flacActive)
+            {
                 _playback.Resume();
+                _playbackStarted = _playback.HasStarted;
+            }
         }
 
         public void SeekFlac(float time)
         {
             if (_playback != null && _flacActive)
-                _playback.Time = time - _songTimeOffset;
+                _playback.Time = GetTargetPlaybackTime(time);
+        }
+
+        private float GetTargetPlaybackTime()
+        {
+            return GetTargetPlaybackTime(_syncController != null
+                ? _syncController.songTime
+                : 0f);
+        }
+
+        private float GetTargetPlaybackTime(float fallbackSongTime)
+        {
+            return Mathf.Max(0f,
+                fallbackSongTime + _songTimeOffset + _audioLatency
+                - _clipLeadInCompensation);
+        }
+
+        private bool CanStartPreparedPlayback()
+        {
+            if (_playback == null || !_playback.IsPrepared)
+                return false;
+
+            if (_syncController == null
+                || _syncController.state != AudioTimeSyncController.State.Playing)
+                return false;
+
+            return GetTargetPlaybackTime() > 0f;
         }
 
         private void OnSceneUnloaded(Scene scene)
@@ -148,7 +201,10 @@ namespace BSSidecarAudio
             _playback = null;
             _syncController = null;
             _flacActive = false;
+            _playbackStarted = false;
             _songTimeOffset = 0f;
+            _audioLatency = 0f;
+            _clipLeadInCompensation = 0f;
             _originalMute = false;
             HarmonyPatches.ClearPending();
         }
