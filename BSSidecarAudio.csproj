@@ -38,9 +38,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' == 'True'">
-    <SkipILRepack Condition="'$(SkipILRepack)' == ''">True</SkipILRepack>
-  </PropertyGroup>
+
   <PropertyGroup Condition="$(DefineConstants.Contains('CIBuild')) OR '$(NCrunch)' == '1'">
     <DisableCopyToPlugins>True</DisableCopyToPlugins>
   </PropertyGroup>
@@ -156,18 +154,14 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="ILRepack.MSBuild.Task" Version="2.0.13">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="NVorbis">
       <Version>0.9.1</Version>
     </PackageReference>
   </ItemGroup>
-  <Target Name="AddSidecarDeps" BeforeTargets="CopyToArtifactDestination" Condition="'$(SkipILRepack)' == 'True'">
-    <ItemGroup>
-      <OutputCopy Include="$(OutputPath)NAudio.dll" OutputPath="Plugins\NAudio.dll" Condition="Exists('$(OutputPath)NAudio.dll')" />
-      <OutputCopy Include="$(OutputPath)NVorbis.dll" OutputPath="Plugins\NVorbis.dll" Condition="Exists('$(OutputPath)NVorbis.dll')" />
-      <OutputCopy Include="$(OutputPath)NVorbis.xml" OutputPath="Plugins\NVorbis.xml" Condition="Exists('$(OutputPath)NVorbis.xml')" />
-    </ItemGroup>
-  </Target>
-  <Target Name="ILRepacker" AfterTargets="Build" Condition="'$(SkipILRepack)' != 'True'">
+  <Target Name="ILRepacker" BeforeTargets="CopyToArtifactDestination" AfterTargets="Build" Condition="'$(SkipILRepack)' != 'True'">
     <PropertyGroup>
       <ILRepackExe>$(UserProfile)\.nuget\packages\ilrepack.msbuild.task\2.0.13\tools\ilrepack.exe</ILRepackExe>
       <GameDir>$([System.IO.Path]::GetFullPath($([System.String]::Copy('$(GameDirectory)').Trim()), '$(MSBuildProjectDirectory)').TrimEnd('\'))</GameDir>
