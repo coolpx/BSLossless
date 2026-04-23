@@ -156,14 +156,32 @@
   <Target Name="ILRepacker" AfterTargets="Build">
     <PropertyGroup>
       <ILRepackExe>$(UserProfile)\.nuget\packages\ilrepack.msbuild.task\2.0.13\tools\ilrepack.exe</ILRepackExe>
-      <GameDir>$([System.IO.Path]::GetFullPath($([System.String]::Copy('$(GameDirectory)').Trim()), '$(MSBuildProjectDirectory)'))</GameDir>
+      <GameDir>$([System.IO.Path]::GetFullPath($([System.String]::Copy('$(GameDirectory)').Trim()), '$(MSBuildProjectDirectory)').TrimEnd('\'))</GameDir>
+      <OutputDir>$([System.IO.Path]::GetFullPath('$(OutputPath)', '$(MSBuildProjectDirectory)').TrimEnd('\'))</OutputDir>
+      <MergedDir>$([System.IO.Path]::Combine('$(OutputDir)', 'merged'))</MergedDir>
+      <PrimaryAssemblyPath>$([System.IO.Path]::Combine('$(OutputDir)', '$(AssemblyName).dll'))</PrimaryAssemblyPath>
+      <NAudioAssemblyPath>$([System.IO.Path]::Combine('$(OutputDir)', 'NAudio.dll'))</NAudioAssemblyPath>
+      <NVorbisAssemblyPath>$([System.IO.Path]::Combine('$(OutputDir)', 'NVorbis.dll'))</NVorbisAssemblyPath>
+      <MergedAssemblyPath>$([System.IO.Path]::Combine('$(MergedDir)', '$(AssemblyName).dll'))</MergedAssemblyPath>
       <GameLibDir>$(GameDir)\Beat Saber_Data\Managed</GameLibDir>
       <GameLibsDir>$(GameDir)\Libs</GameLibsDir>
+      <RepackRefsDir>$([System.IO.Path]::Combine('$(OutputDir)', 'ilrepackrefs'))</RepackRefsDir>
+      <RepackManagedDir>$([System.IO.Path]::Combine('$(RepackRefsDir)', 'managed'))</RepackManagedDir>
+      <RepackLibsDir>$([System.IO.Path]::Combine('$(RepackRefsDir)', 'libs'))</RepackLibsDir>
     </PropertyGroup>
-    <MakeDir Directories="$(OutputPath)merged" Condition="!Exists('$(OutputPath)merged')" />
-    <Exec Command="&quot;$(ILRepackExe)&quot; /out:&quot;$(OutputPath)merged\$(AssemblyName).dll&quot; /lib:&quot;$(OutputPath).&quot; /lib:&quot;$(GameLibDir)&quot; /lib:&quot;$(GameLibsDir)&quot; /internalize &quot;$(OutputPath)$(AssemblyName).dll&quot; &quot;$(OutputPath)NAudio.dll&quot; &quot;$(OutputPath)NVorbis.dll&quot;" />
-    <Copy SourceFiles="$(OutputPath)merged\$(AssemblyName).dll" DestinationFiles="$(OutputPath)$(AssemblyName).dll" />
-    <RemoveDir Directories="$(OutputPath)merged" />
+    <ItemGroup>
+      <ILRepackManagedReferences Include="$(GameLibDir)\*.dll" />
+      <ILRepackLibraryReferences Include="$(GameLibsDir)\*.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(MergedDir)" Condition="!Exists('$(MergedDir)')" />
+    <RemoveDir Directories="$(RepackRefsDir)" Condition="Exists('$(RepackRefsDir)')" />
+    <MakeDir Directories="$(RepackManagedDir);$(RepackLibsDir)" />
+    <Copy SourceFiles="@(ILRepackManagedReferences)" DestinationFolder="$(RepackManagedDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ILRepackLibraryReferences)" DestinationFolder="$(RepackLibsDir)" SkipUnchangedFiles="true" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="&quot;$(ILRepackExe)&quot; /out:&quot;$(MergedAssemblyPath)&quot; /lib:&quot;$(OutputDir)&quot; /lib:&quot;$(RepackManagedDir)&quot; /lib:&quot;$(RepackLibsDir)&quot; /internalize &quot;$(PrimaryAssemblyPath)&quot; &quot;$(NAudioAssemblyPath)&quot; &quot;$(NVorbisAssemblyPath)&quot;" />
+    <Copy SourceFiles="$(MergedAssemblyPath)" DestinationFiles="$(PrimaryAssemblyPath)" />
+    <RemoveDir Directories="$(MergedDir)" />
+    <RemoveDir Directories="$(RepackRefsDir)" />
   </Target>
   <Target Name="GenerateVersionFiles" BeforeTargets="BSMT_GetProjectInfo">
     <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(VersionSyncScript)&quot; -ProjectDir &quot;$(MSBuildProjectDirectory)&quot; -ManifestTemplatePath &quot;$(ManifestTemplatePath)&quot; -ManifestOutputPath &quot;$(GeneratedManifestPath)&quot; -AssemblyInfoTemplatePath &quot;$(AssemblyInfoTemplatePath)&quot; -AssemblyInfoOutputPath &quot;$(GeneratedAssemblyInfoPath)&quot; -GameVersion &quot;$(BSSIDECARGameVersion)&quot;" />
