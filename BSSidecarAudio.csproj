@@ -38,6 +38,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' == 'True'">
+    <SkipILRepack Condition="'$(SkipILRepack)' == ''">True</SkipILRepack>
+  </PropertyGroup>
   <PropertyGroup Condition="$(DefineConstants.Contains('CIBuild')) OR '$(NCrunch)' == '1'">
     <DisableCopyToPlugins>True</DisableCopyToPlugins>
   </PropertyGroup>
@@ -144,6 +147,13 @@
     <None Include="Properties\AssemblyInfo.template.cs" />
   </ItemGroup>
   <ItemGroup>
+    <OutputCopy Include="$(OutputPath)$(AssemblyName).dll" OutputPath="Plugins\$(AssemblyName).dll"/>
+    <OutputCopy Include="$(OutputPath)$(AssemblyName).pdb" OutputPath="Plugins\$(AssemblyName).pdb" Condition="Exists('$(OutputPath)$(AssemblyName).pdb') AND '$(CopyPDB)' == 'True'" />
+    <OutputCopy Include="$(OutputPath)NAudio.dll" OutputPath="Plugins\NAudio.dll" Condition="'$(SkipILRepack)' == 'True' AND Exists('$(OutputPath)NAudio.dll')" />
+    <OutputCopy Include="$(OutputPath)NVorbis.dll" OutputPath="Plugins\NVorbis.dll" Condition="'$(SkipILRepack)' == 'True' AND Exists('$(OutputPath)NVorbis.dll')" />
+    <OutputCopy Include="$(OutputPath)NVorbis.xml" OutputPath="Plugins\NVorbis.xml" Condition="'$(SkipILRepack)' == 'True' AND Exists('$(OutputPath)NVorbis.xml')" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="BeatSaberModdingTools.Tasks">
       <Version>2.0.0-beta1</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -153,7 +163,7 @@
       <Version>0.9.1</Version>
     </PackageReference>
   </ItemGroup>
-  <Target Name="ILRepacker" AfterTargets="Build">
+  <Target Name="ILRepacker" AfterTargets="Build" Condition="'$(SkipILRepack)' != 'True'">
     <PropertyGroup>
       <ILRepackExe>$(UserProfile)\.nuget\packages\ilrepack.msbuild.task\2.0.13\tools\ilrepack.exe</ILRepackExe>
       <GameDir>$([System.IO.Path]::GetFullPath($([System.String]::Copy('$(GameDirectory)').Trim()), '$(MSBuildProjectDirectory)').TrimEnd('\'))</GameDir>

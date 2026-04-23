@@ -75,7 +75,7 @@ jobs:
         shell: pwsh
         env:
           BSSIDECAR_GAME_VERSION: ${{ steps.vars.outputs.game_version }}
-        run: dotnet build BSSidecarAudio.sln -c Release --no-restore -p:DisableCopyToGame=True -p:DisableZipRelease=True -p:GameDirectory="${{ steps.refs.outputs.refs_dir }}"
+        run: dotnet build BSSidecarAudio.sln -c Release --no-restore -p:DisableCopyToGame=True -p:DisableZipRelease=True -p:SkipILRepack=True -p:GameDirectory="${{ steps.refs.outputs.refs_dir }}"
 
       - name: Pack release zip
         id: pack
