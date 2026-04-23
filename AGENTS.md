@@ -52,7 +52,7 @@ Avoid:
 - Vague comments like `// handle audio`.
 
 ## Verify
-- Build after code edits.
+- Build after code edits: `dotnet build`.
 - Smoke test map with no `song.flac`: stock audio unchanged.
 - Smoke test map with `song.flac`: stock audio muted, FLAC starts, pause/resume/seek stay aligned.
 - Watch logs for `Envelope alignment` and cleanup path on scene unload.
