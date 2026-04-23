@@ -3,6 +3,8 @@
 [Bb]in/
 [Oo]bj/
 packages/
+/manifest.json
+/Properties/AssemblyInfo.cs
 
 *.user
 *.suo

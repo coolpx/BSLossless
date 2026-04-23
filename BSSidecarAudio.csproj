@@ -20,6 +20,11 @@
     <!--<PathMap>$(AppOutputBase)=X:\$(AssemblyName)\</PathMap>-->
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <VersionSyncScript>$(MSBuildProjectDirectory)\build\Sync-VersionFromGitTag.ps1</VersionSyncScript>
+    <ManifestTemplatePath>$(MSBuildProjectDirectory)\manifest.template.json</ManifestTemplatePath>
+    <GeneratedManifestPath>$(MSBuildProjectDirectory)\manifest.json</GeneratedManifestPath>
+    <AssemblyInfoTemplatePath>$(MSBuildProjectDirectory)\Properties\AssemblyInfo.template.cs</AssemblyInfoTemplatePath>
+    <GeneratedAssemblyInfoPath>$(MSBuildProjectDirectory)\Properties\AssemblyInfo.cs</GeneratedAssemblyInfoPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <Optimize>false</Optimize>
@@ -134,6 +139,8 @@
   <ItemGroup>
     <None Include="Directory.Build.props" Condition="Exists('Directory.Build.props')" />
     <None Include="BSSidecarAudio.csproj.user" Condition="Exists('BSSidecarAudio.csproj.user')" />
+    <None Include="manifest.template.json" />
+    <None Include="Properties\AssemblyInfo.template.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BeatSaberModdingTools.Tasks">
@@ -156,6 +163,9 @@
     <Exec Command="&quot;$(ILRepackExe)&quot; /out:&quot;$(OutputPath)merged\$(AssemblyName).dll&quot; /lib:&quot;$(OutputPath).&quot; /lib:&quot;$(GameLibDir)&quot; /lib:&quot;$(GameLibsDir)&quot; /internalize &quot;$(OutputPath)$(AssemblyName).dll&quot; &quot;$(OutputPath)NAudio.dll&quot; &quot;$(OutputPath)NVorbis.dll&quot;" />
     <Copy SourceFiles="$(OutputPath)merged\$(AssemblyName).dll" DestinationFiles="$(OutputPath)$(AssemblyName).dll" />
     <RemoveDir Directories="$(OutputPath)merged" />
+  </Target>
+  <Target Name="GenerateVersionFiles" BeforeTargets="BSMT_GetProjectInfo">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(VersionSyncScript)&quot; -ProjectDir &quot;$(MSBuildProjectDirectory)&quot; -ManifestTemplatePath &quot;$(ManifestTemplatePath)&quot; -ManifestOutputPath &quot;$(GeneratedManifestPath)&quot; -AssemblyInfoTemplatePath &quot;$(AssemblyInfoTemplatePath)&quot; -AssemblyInfoOutputPath &quot;$(GeneratedAssemblyInfoPath)&quot; -GameVersion &quot;$(BSSIDECARGameVersion)&quot;" />
   </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

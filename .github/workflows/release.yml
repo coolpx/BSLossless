@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Resolve release metadata
+        id: vars
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+
+          $branches = git for-each-ref --format='%(refname:short)' refs/remotes/origin --points-at $env:GITHUB_SHA |
+            ForEach-Object { $_ -replace '^origin/', '' } |
+            Where-Object { $_ -match '^\d+\.\d+\.\d+$' }
+
+          if (-not $branches) {
+            $branches = git for-each-ref --format='%(refname:short)' refs/remotes/origin --contains $env:GITHUB_SHA |
+              ForEach-Object { $_ -replace '^origin/', '' } |
+              Where-Object { $_ -match '^\d+\.\d+\.\d+$' }
+          }
+
+          $gameVersion = $branches | Select-Object -First 1
+          if (-not $gameVersion) {
+            throw "No Beat Saber version branch found for $env:GITHUB_SHA."
+          }
+
+          $pluginVersion = $env:GITHUB_REF_NAME.TrimStart('v')
+          $assetName = "BSSidecarAudio-v$pluginVersion-bs$gameVersion.zip"
+          $releaseName = "BSSidecarAudio v$pluginVersion for Beat Saber $gameVersion"
+
+          "game_version=$gameVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "plugin_version=$pluginVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "asset_name=$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "release_name=$releaseName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Fetch Beat Saber refs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $refsDir = Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) "Refs"
+          if (Test-Path $refsDir) {
+            Remove-Item -Recurse -Force $refsDir
+          }
+
+          git clone --depth 1 --branch "version/${{ steps.vars.outputs.game_version }}" https://github.com/beat-forge/beatsaber-stripped.git $refsDir
+
+      - name: Restore packages
+        shell: pwsh
+        run: nuget restore BSSidecarAudio.sln
+
+      - name: Build release
+        shell: pwsh
+        env:
+          BSSIDECAR_GAME_VERSION: ${{ steps.vars.outputs.game_version }}
+        run: msbuild BSSidecarAudio.sln /t:Build /p:Configuration=Release /p:DisableCopyToGame=True /p:DisableZipRelease=True /m
+
+      - name: Pack release zip
+        id: pack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $artifactDir = Join-Path $env:GITHUB_WORKSPACE "bin\\Release\\Artifact"
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE "manifest.json"
+          $zipPath = Join-Path $env:RUNNER_TEMP "${{ steps.vars.outputs.asset_name }}"
+
+          if (-not (Test-Path $artifactDir)) {
+            throw "Artifact directory missing: $artifactDir"
+          }
+
+          Copy-Item $manifestPath (Join-Path $artifactDir "manifest.json") -Force
+
+          if (Test-Path $zipPath) {
+            Remove-Item -Force $zipPath
+          }
+
+          Compress-Archive -Path (Join-Path $artifactDir "*") -DestinationPath $zipPath
+          "zip_path=$zipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          gh release create $env:GITHUB_REF_NAME "${{ steps.pack.outputs.zip_path }}#${{ steps.vars.outputs.asset_name }}" --title "${{ steps.vars.outputs.release_name }}" --notes "Beat Saber ${{ steps.vars.outputs.game_version }} build."

@@ -1,11 +1,11 @@
-﻿{
+{
   "$schema": "https://raw.githubusercontent.com/bsmg/BSIPA-MetadataFileSchema/master/Schema.json",
   "id": "BSSidecarAudio",
   "name": "BSSidecarAudio",
   "author": "coolpixels",
-  "version": "0.0.1",
+  "version": "__VERSION__",
   "description": "Lossless playback in* Beat Saber",
-  "gameVersion": "1.18.3",
+  "gameVersion": "__GAME_VERSION__",
   "dependsOn": {
     "BSIPA": "^4.2.0"
   }
