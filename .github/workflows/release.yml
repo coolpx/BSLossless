@@ -18,11 +18,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Setup NuGet
-        uses: nuget/setup-nuget@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
 
       - name: Resolve release metadata
         id: vars
@@ -68,13 +67,13 @@ jobs:
 
       - name: Restore packages
         shell: pwsh
-        run: nuget restore BSSidecarAudio.sln
+        run: dotnet restore BSSidecarAudio.sln
 
       - name: Build release
         shell: pwsh
         env:
           BSSIDECAR_GAME_VERSION: ${{ steps.vars.outputs.game_version }}
-        run: msbuild BSSidecarAudio.sln /t:Build /p:Configuration=Release /p:DisableCopyToGame=True /p:DisableZipRelease=True /m
+        run: dotnet build BSSidecarAudio.sln -c Release --no-restore -p:DisableCopyToGame=True -p:DisableZipRelease=True
 
       - name: Pack release zip
         id: pack
