@@ -123,9 +123,17 @@ namespace BSLossless
             _disposed = true;
         }
 
-        public static AudioClip LoadAudioAsAudioClip(string path)
+        public struct DecodedAudio
         {
-            Plugin.Log.Info($"Loading override audio: {path}");
+            public float[] Samples;
+            public int Channels;
+            public int SampleRate;
+            public int FrameCount;
+        }
+
+        public static DecodedAudio DecodeAudioData(string path)
+        {
+            Plugin.Log.Info($"Decoding audio: {path}");
 
             using (var reader = new AudioFileReader(path))
             {
@@ -156,13 +164,30 @@ namespace BSLossless
                     Array.Copy(samples, clipSamples, totalRead);
                 }
 
-                var clip = AudioClip.Create("BSLossless", actualFrames,
-                    channels, sampleRate, false);
-                clip.SetData(clipSamples, 0);
+                Plugin.Log.Info($"Audio decoded: {actualFrames} frames, {duration:F1}s");
 
-                Plugin.Log.Info($"Audio loaded: {actualFrames} frames, {clip.length:F1}s");
-                return clip;
+                return new DecodedAudio
+                {
+                    Samples = clipSamples,
+                    Channels = channels,
+                    SampleRate = sampleRate,
+                    FrameCount = actualFrames
+                };
             }
+        }
+
+        public static AudioClip CreateAudioClip(DecodedAudio decoded)
+        {
+            var clip = AudioClip.Create("BSLossless", decoded.FrameCount,
+                decoded.Channels, decoded.SampleRate, false);
+            clip.SetData(decoded.Samples, 0);
+            Plugin.Log.Info($"Audio clip created: {decoded.FrameCount} frames, {clip.length:F1}s");
+            return clip;
+        }
+
+        public static AudioClip LoadAudioAsAudioClip(string path)
+        {
+            return CreateAudioClip(DecodeAudioData(path));
         }
     }
 }

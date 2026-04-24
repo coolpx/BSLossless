@@ -210,7 +210,24 @@ namespace BSLossless
                     return false;
                 }
 
-                var clip = SidecarPlayback.LoadAudioAsAudioClip(overridePath);
+                __result = LoadPreviewOverrideAsync(overridePath, levelDir);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error($"Preview override audio substitution failed: {ex}");
+                return true;
+            }
+        }
+
+        private static async Task<AudioClip> LoadPreviewOverrideAsync(
+            string overridePath, string levelDir)
+        {
+            try
+            {
+                var decoded = await Task.Run(
+                    () => SidecarPlayback.DecodeAudioData(overridePath));
+                var clip = SidecarPlayback.CreateAudioClip(decoded);
 
                 while (_previewClipCache.Count >= MaxPreviewCacheSize
                     && _previewCacheOrder.Count > 0)
@@ -231,13 +248,12 @@ namespace BSLossless
 
                 Plugin.Log.Info(
                     $"Preview: loaded override audio for {Path.GetFileName(levelDir)}");
-                __result = Task.FromResult(clip);
-                return false;
+                return clip;
             }
             catch (Exception ex)
             {
-                Plugin.Log.Error($"Preview override audio substitution failed: {ex}");
-                return true;
+                Plugin.Log.Error($"Preview override audio load failed: {ex}");
+                return null;
             }
         }
 
