@@ -4,6 +4,7 @@
 packages/
 /manifest.json
 /Properties/AssemblyInfo.cs
+/LocalConfig.props
 
 *.user
 *.suo
