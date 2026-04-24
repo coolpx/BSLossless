@@ -16,7 +16,7 @@ namespace BSSidecarAudio
         private AudioMixerGroup _gameMixerGroup;
         private float _originalVolume;
         private bool _originalMute;
-        private bool _flacActive;
+        private bool _overrideActive;
         private float _songTimeOffset;
         private float _audioLatency;
         private float _clipLeadInCompensation;
@@ -60,7 +60,7 @@ namespace BSSidecarAudio
 
         private void LateUpdate()
         {
-            if (!_flacActive || _playback == null || _syncController == null)
+            if (!_overrideActive || _playback == null || _syncController == null)
                 return;
 
             _playback.TickFade(Time.deltaTime);
@@ -121,8 +121,8 @@ namespace BSSidecarAudio
             }
         }
 
-        public void StartFlacPlayback(AudioTimeSyncController syncController,
-            string flacPath, string referenceAudioPath, float songTimeOffset)
+        public void StartOverridePlayback(AudioTimeSyncController syncController,
+            string overridePath, string referenceAudioPath, float songTimeOffset)
         {
             Cleanup();
 
@@ -147,13 +147,13 @@ namespace BSSidecarAudio
                     Plugin.Log.Info("Muted game AudioSource");
                 }
 
-                var clip = SidecarPlayback.LoadFlacAsAudioClip(flacPath);
+                var clip = SidecarPlayback.LoadAudioAsAudioClip(overridePath);
                 _clipLeadInCompensation = AudioAlignment
-                    .EstimateLeadInCompensation(referenceAudioPath, flacPath);
+                    .EstimateLeadInCompensation(referenceAudioPath, overridePath);
                 _playback = new SidecarPlayback();
                 float startTime = GetTargetPlaybackTime();
                 _playback.Prepare(clip, startTime, _gameMixerGroup);
-                _flacActive = true;
+                _overrideActive = true;
                 _playbackStarted = false;
 
                 if (CanStartPreparedPlayback())
@@ -163,40 +163,40 @@ namespace BSSidecarAudio
                 }
 
                 Plugin.Log.Info(
-                    $"FLAC playback started (offset={_songTimeOffset}s, latency={_audioLatency}s, leadInComp={_clipLeadInCompensation}s)");
+                    $"Override playback started (offset={_songTimeOffset}s, latency={_audioLatency}s, leadInComp={_clipLeadInCompensation}s)");
             }
             catch (Exception ex)
             {
-                Plugin.Log.Error($"FLAC playback failed: {ex}");
+                Plugin.Log.Error($"Override playback failed: {ex}");
                 Cleanup();
             }
         }
 
-        public void PauseFlac()
+        public void PauseOverride()
         {
-            if (_playback != null && _flacActive)
+            if (_playback != null && _overrideActive)
                 _playback.Pause();
         }
 
-        public void ResumeFlac()
+        public void ResumeOverride()
         {
-            if (_playback != null && _flacActive)
+            if (_playback != null && _overrideActive)
             {
                 _playback.Resume();
                 _playbackStarted = _playback.HasStarted;
             }
         }
 
-        public void SeekFlac(float time)
+        public void SeekOverride(float time)
         {
-            if (_playback != null && _flacActive)
+            if (_playback != null && _overrideActive)
                 _playback.Time = GetTargetPlaybackTime(time);
         }
 
         public void StartFailAnimation(AudioSource gameSource,
             AnimationCurve gainCurve, float duration)
         {
-            if (gameSource != _mutedGameSource || !_flacActive)
+            if (gameSource != _mutedGameSource || !_overrideActive)
                 return;
 
             _failGainCurve = gainCurve;
@@ -233,9 +233,9 @@ namespace BSSidecarAudio
 
         private void OnSceneUnloaded(Scene scene)
         {
-            if (_flacActive)
+            if (_overrideActive)
             {
-                Plugin.Log.Info("Scene unloaded, cleaning up FLAC playback");
+                Plugin.Log.Info("Scene unloaded, cleaning up override playback");
                 Cleanup();
             }
         }
@@ -252,7 +252,7 @@ namespace BSSidecarAudio
             _playback?.Dispose();
             _playback = null;
             _syncController = null;
-            _flacActive = false;
+            _overrideActive = false;
             _playbackStarted = false;
             _songTimeOffset = 0f;
             _audioLatency = 0f;

@@ -12,31 +12,31 @@ namespace BSSidecarAudio
         private const int AnalysisSeconds = 24;
 
         public static float EstimateLeadInCompensation(
-            string referenceAudioPath, string flacPath)
+            string referenceAudioPath, string overridePath)
         {
             if (string.IsNullOrEmpty(referenceAudioPath)
-                || string.IsNullOrEmpty(flacPath))
+                || string.IsNullOrEmpty(overridePath))
                 return 0f;
 
             try
             {
                 float[] referenceEnvelope = ReadEnvelopeFromVorbis(referenceAudioPath);
-                float[] flacEnvelope = ReadEnvelopeFromFlac(flacPath);
+                float[] overrideEnvelope = ReadEnvelopeFromAudio(overridePath);
 
-                if (referenceEnvelope.Length == 0 || flacEnvelope.Length == 0)
+                if (referenceEnvelope.Length == 0 || overrideEnvelope.Length == 0)
                     return 0f;
 
                 int maxLagFrames = Math.Min(
                     MaxLagSeconds * EnvelopeFramesPerSecond,
                     Math.Max(0, referenceEnvelope.Length - 1));
                 int windowLength = Math.Min(
-                    flacEnvelope.Length,
+                    overrideEnvelope.Length,
                     Math.Max(0, referenceEnvelope.Length - maxLagFrames));
 
                 if (windowLength <= EnvelopeFramesPerSecond)
                     return 0f;
 
-                int bestLag = FindBestLag(referenceEnvelope, flacEnvelope,
+                int bestLag = FindBestLag(referenceEnvelope, overrideEnvelope,
                     maxLagFrames, windowLength);
                 float compensation = (float)bestLag / EnvelopeFramesPerSecond;
 
@@ -52,7 +52,7 @@ namespace BSSidecarAudio
         }
 
         private static int FindBestLag(float[] referenceEnvelope,
-            float[] flacEnvelope, int maxLagFrames, int windowLength)
+            float[] overrideEnvelope, int maxLagFrames, int windowLength)
         {
             int bestLag = 0;
             double bestScore = double.NegativeInfinity;
@@ -64,7 +64,7 @@ namespace BSSidecarAudio
                 if (comparableLength <= EnvelopeFramesPerSecond)
                     break;
 
-                double score = ScoreLag(referenceEnvelope, flacEnvelope,
+                double score = ScoreLag(referenceEnvelope, overrideEnvelope,
                     lag, comparableLength);
                 if (score > bestScore)
                 {
@@ -77,28 +77,28 @@ namespace BSSidecarAudio
         }
 
         private static double ScoreLag(float[] referenceEnvelope,
-            float[] flacEnvelope, int lag, int length)
+            float[] overrideEnvelope, int lag, int length)
         {
             double dot = 0d;
             double referencePower = 0d;
-            double flacPower = 0d;
+            double overridePower = 0d;
 
             for (int i = 0; i < length; i++)
             {
                 double a = referenceEnvelope[lag + i];
-                double b = flacEnvelope[i];
+                double b = overrideEnvelope[i];
                 dot += a * b;
                 referencePower += a * a;
-                flacPower += b * b;
+                overridePower += b * b;
             }
 
-            if (referencePower <= double.Epsilon || flacPower <= double.Epsilon)
+            if (referencePower <= double.Epsilon || overridePower <= double.Epsilon)
                 return double.NegativeInfinity;
 
-            return dot / Math.Sqrt(referencePower * flacPower);
+            return dot / Math.Sqrt(referencePower * overridePower);
         }
 
-        private static float[] ReadEnvelopeFromFlac(string path)
+        private static float[] ReadEnvelopeFromAudio(string path)
         {
             using (var reader = new AudioFileReader(path))
             {

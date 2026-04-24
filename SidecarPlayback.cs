@@ -101,7 +101,7 @@ namespace BSSidecarAudio
         {
             Stop();
             _audioClip = clip;
-            _gameObject = new GameObject("BSSidecarFlacPlayer");
+            _gameObject = new GameObject("BSSidecarPlayer");
             GameObject.DontDestroyOnLoad(_gameObject);
             _audioSource = _gameObject.AddComponent<AudioSource>();
             _audioSource.clip = _audioClip;
@@ -179,9 +179,9 @@ namespace BSSidecarAudio
             _disposed = true;
         }
 
-        public static AudioClip LoadFlacAsAudioClip(string path)
+        public static AudioClip LoadAudioAsAudioClip(string path)
         {
-            Plugin.Log.Info($"Loading FLAC: {path}");
+            Plugin.Log.Info($"Loading override audio: {path}");
 
             using (var reader = new AudioFileReader(path))
             {
@@ -191,7 +191,7 @@ namespace BSSidecarAudio
                 int totalFrames = (int)Math.Ceiling(duration * sampleRate);
                 int totalSamples = totalFrames * channels;
 
-                Plugin.Log.Debug($"FLAC info: {sampleRate}Hz, {channels}ch, {duration:F1}s");
+                Plugin.Log.Debug($"Audio info: {sampleRate}Hz, {channels}ch, {duration:F1}s");
 
                 float[] samples = new float[totalSamples];
                 int totalRead = 0;
@@ -212,11 +212,11 @@ namespace BSSidecarAudio
                     Array.Copy(samples, clipSamples, totalRead);
                 }
 
-                var clip = AudioClip.Create("BSSidecarFlac", actualFrames,
+                var clip = AudioClip.Create("BSSidecarAudio", actualFrames,
                     channels, sampleRate, false);
                 clip.SetData(clipSamples, 0);
 
-                Plugin.Log.Info($"FLAC loaded: {actualFrames} frames, {clip.length:F1}s");
+                Plugin.Log.Info($"Audio loaded: {actualFrames} frames, {clip.length:F1}s");
                 return clip;
             }
         }

@@ -10,19 +10,35 @@ namespace BSSidecarAudio
     [HarmonyPatch]
     static class HarmonyPatches
     {
-        internal static string PendingFlacPath { get; private set; }
+        internal static string PendingOverridePath { get; private set; }
         internal static string PendingAudioPath { get; private set; }
         internal static float PendingSongTimeOffset { get; private set; }
-        internal static bool HasFlac => !string.IsNullOrEmpty(PendingFlacPath);
+        internal static bool HasOverride => !string.IsNullOrEmpty(PendingOverridePath);
 
         private static readonly Dictionary<string, AudioClip> _previewClipCache
             = new Dictionary<string, AudioClip>();
         private static readonly List<string> _previewCacheOrder = new List<string>();
         private const int MaxPreviewCacheSize = 3;
 
+        private static readonly string[] SupportedExtensions = new[]
+        {
+            ".flac", ".wav", ".aiff", ".aif", ".ogg", ".mp3", ".wma"
+        };
+
+        internal static string FindOverrideAudio(string levelDir)
+        {
+            foreach (var ext in SupportedExtensions)
+            {
+                var path = Path.Combine(levelDir, $"override{ext}");
+                if (File.Exists(path))
+                    return path;
+            }
+            return null;
+        }
+
         internal static void ClearPending()
         {
-            PendingFlacPath = null;
+            PendingOverridePath = null;
             PendingAudioPath = null;
             PendingSongTimeOffset = 0f;
         }
@@ -80,18 +96,18 @@ namespace BSSidecarAudio
                     }
 
                     string levelDir = Path.GetDirectoryName(audioPath);
-                    string flacPath = Path.Combine(levelDir, "song.flac");
+                    string overridePath = FindOverrideAudio(levelDir);
 
-                    if (File.Exists(flacPath))
+                    if (overridePath != null)
                     {
-                        Plugin.Log.Info($"Found song.flac: {flacPath} (offset={songTimeOffset}s)");
-                        PendingFlacPath = flacPath;
+                        Plugin.Log.Info($"Found override audio: {overridePath} (offset={songTimeOffset}s)");
+                        PendingOverridePath = overridePath;
                         PendingAudioPath = audioPath;
                         PendingSongTimeOffset = songTimeOffset;
                     }
                     else
                     {
-                        Plugin.Log.Debug($"No song.flac in {levelDir}");
+                        Plugin.Log.Debug($"No override audio in {levelDir}");
                     }
                 }
                 else
@@ -102,7 +118,7 @@ namespace BSSidecarAudio
             }
             catch (Exception ex)
             {
-                Plugin.Log.Error($"Error detecting FLAC: {ex}");
+                Plugin.Log.Error($"Error detecting override audio: {ex}");
                 ClearPending();
             }
         }
@@ -112,16 +128,16 @@ namespace BSSidecarAudio
         static void AudioTimeSyncController_StartSong(
             AudioTimeSyncController __instance)
         {
-            if (!HasFlac) return;
+            if (!HasOverride) return;
 
             try
             {
-                BSSidecarAudioController.Instance?.StartFlacPlayback(
-                    __instance, PendingFlacPath, PendingAudioPath, PendingSongTimeOffset);
+                BSSidecarAudioController.Instance?.StartOverridePlayback(
+                    __instance, PendingOverridePath, PendingAudioPath, PendingSongTimeOffset);
             }
             catch (Exception ex)
             {
-                Plugin.Log.Error($"Error starting FLAC playback: {ex}");
+                Plugin.Log.Error($"Error starting override playback: {ex}");
             }
         }
 
@@ -129,14 +145,14 @@ namespace BSSidecarAudio
         [HarmonyPostfix]
         static void AudioTimeSyncController_Pause()
         {
-            BSSidecarAudioController.Instance?.PauseFlac();
+            BSSidecarAudioController.Instance?.PauseOverride();
         }
 
         [HarmonyPatch(typeof(AudioTimeSyncController), "Resume")]
         [HarmonyPostfix]
         static void AudioTimeSyncController_Resume()
         {
-            BSSidecarAudioController.Instance?.ResumeFlac();
+            BSSidecarAudioController.Instance?.ResumeOverride();
         }
 
         [HarmonyPatch(typeof(AudioTimeSyncController), "SeekTo")]
@@ -144,7 +160,7 @@ namespace BSSidecarAudio
         static void AudioTimeSyncController_SeekTo(
             AudioTimeSyncController __instance)
         {
-            BSSidecarAudioController.Instance?.SeekFlac(__instance.songTime);
+            BSSidecarAudioController.Instance?.SeekOverride(__instance.songTime);
         }
 
         [HarmonyPatch(typeof(AudioPitchGainEffect), "StartEffect")]
@@ -181,20 +197,20 @@ namespace BSSidecarAudio
                     return true;
 
                 string levelDir = Path.GetDirectoryName(previewPath);
-                string flacPath = Path.Combine(levelDir, "song.flac");
+                string overridePath = FindOverrideAudio(levelDir);
 
-                if (!File.Exists(flacPath))
+                if (overridePath == null)
                     return true;
 
-                if (_previewClipCache.TryGetValue(flacPath, out var cached))
+                if (_previewClipCache.TryGetValue(overridePath, out var cached))
                 {
                     Plugin.Log.Debug(
-                        $"Preview: cached FLAC for {Path.GetFileName(levelDir)}");
+                        $"Preview: cached override audio for {Path.GetFileName(levelDir)}");
                     __result = Task.FromResult(cached);
                     return false;
                 }
 
-                var clip = SidecarPlayback.LoadFlacAsAudioClip(flacPath);
+                var clip = SidecarPlayback.LoadAudioAsAudioClip(overridePath);
 
                 while (_previewClipCache.Count >= MaxPreviewCacheSize
                     && _previewCacheOrder.Count > 0)
@@ -210,17 +226,17 @@ namespace BSSidecarAudio
                     }
                 }
 
-                _previewClipCache[flacPath] = clip;
-                _previewCacheOrder.Add(flacPath);
+                _previewClipCache[overridePath] = clip;
+                _previewCacheOrder.Add(overridePath);
 
                 Plugin.Log.Info(
-                    $"Preview: loaded FLAC for {Path.GetFileName(levelDir)}");
+                    $"Preview: loaded override audio for {Path.GetFileName(levelDir)}");
                 __result = Task.FromResult(clip);
                 return false;
             }
             catch (Exception ex)
             {
-                Plugin.Log.Error($"Preview FLAC substitution failed: {ex}");
+                Plugin.Log.Error($"Preview override audio substitution failed: {ex}");
                 return true;
             }
         }
@@ -239,12 +255,15 @@ namespace BSSidecarAudio
                     return;
 
                 string levelDir = Path.GetDirectoryName(previewPath);
-                string flacPath = Path.Combine(levelDir, "song.flac");
+                string overridePath = FindOverrideAudio(levelDir);
 
-                if (_previewClipCache.TryGetValue(flacPath, out var clip))
+                if (overridePath == null)
+                    return;
+
+                if (_previewClipCache.TryGetValue(overridePath, out var clip))
                 {
-                    _previewClipCache.Remove(flacPath);
-                    _previewCacheOrder.Remove(flacPath);
+                    _previewClipCache.Remove(overridePath);
+                    _previewCacheOrder.Remove(overridePath);
                     if (clip != null
                         && clip.loadState == AudioDataLoadState.Loaded)
                         clip.UnloadAudioData();
@@ -252,7 +271,7 @@ namespace BSSidecarAudio
             }
             catch (Exception ex)
             {
-                Plugin.Log.Error($"Preview FLAC cleanup failed: {ex}");
+                Plugin.Log.Error($"Preview override audio cleanup failed: {ex}");
             }
         }
     }
