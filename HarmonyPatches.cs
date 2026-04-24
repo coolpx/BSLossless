@@ -127,5 +127,21 @@ namespace BSSidecarAudio
         {
             BSSidecarAudioController.Instance?.SeekFlac(__instance.songTime);
         }
+
+        [HarmonyPatch(typeof(AudioPitchGainEffect), "StartEffect")]
+        [HarmonyPostfix]
+        static void AudioPitchGainEffect_StartEffect(
+            AudioPitchGainEffect __instance)
+        {
+            var audioSource = (AudioSource)Traverse.Create(__instance)
+                .Field("_audioSource").GetValue();
+            var gainCurve = (AnimationCurve)Traverse.Create(__instance)
+                .Field("_gainCurve").GetValue();
+            var duration = (float)Traverse.Create(__instance)
+                .Field("_duration").GetValue();
+
+            BSSidecarAudioController.Instance?.StartFailAnimation(
+                audioSource, gainCurve, duration);
+        }
     }
 }

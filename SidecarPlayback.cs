@@ -16,8 +16,19 @@ namespace BSSidecarAudio
         private float _targetVolume = 1f;
         private float _pendingSeekTime;
         private bool _seekPending;
+        private float _volumeScale = 1f;
         public bool SeekPending => _seekPending;
         private const float FadeDuration = 0.012f;
+
+        public float VolumeScale
+        {
+            get => _volumeScale;
+            set
+            {
+                _volumeScale = value;
+                ApplyVolume();
+            }
+        }
 
         public bool IsPlaying => _audioSource != null && _audioSource.isPlaying;
         public float Length => _audioClip != null ? _audioClip.length : 0f;
@@ -69,7 +80,7 @@ namespace BSSidecarAudio
                 _currentVolume = Mathf.Min(_targetVolume,
                     _currentVolume + step);
 
-            _audioSource.volume = _currentVolume;
+            ApplyVolume();
 
             if (_seekPending && _currentVolume <= 0f)
             {
@@ -77,6 +88,12 @@ namespace BSSidecarAudio
                 _seekPending = false;
                 _targetVolume = 1f;
             }
+        }
+
+        private void ApplyVolume()
+        {
+            if (_audioSource != null)
+                _audioSource.volume = _currentVolume * _volumeScale;
         }
 
         public void Prepare(AudioClip clip, float startTime = 0f,
@@ -150,6 +167,9 @@ namespace BSSidecarAudio
             }
             _audioSource = null;
             _started = false;
+            _volumeScale = 1f;
+            _currentVolume = 1f;
+            _targetVolume = 1f;
         }
 
         public void Dispose()

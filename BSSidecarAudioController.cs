@@ -22,6 +22,10 @@ namespace BSSidecarAudio
         private float _clipLeadInCompensation;
         private bool _playbackStarted;
         private float _lastPitch = 1f;
+        private AnimationCurve _failGainCurve;
+        private float _failDuration;
+        private float _failStartTime;
+        private bool _failAnimating;
 
         private void Awake()
         {
@@ -90,6 +94,21 @@ namespace BSSidecarAudio
 
                     if (Mathf.Abs(diff) > threshold)
                         _playback.QueueSeek(targetTime);
+                }
+            }
+
+            if (_failAnimating && _playback != null)
+            {
+                float elapsed = Time.time - _failStartTime;
+                if (elapsed >= _failDuration)
+                {
+                    _playback.VolumeScale = 0f;
+                    _failAnimating = false;
+                }
+                else
+                {
+                    _playback.VolumeScale = _failGainCurve.Evaluate(
+                        elapsed / _failDuration);
                 }
             }
 
@@ -173,6 +192,18 @@ namespace BSSidecarAudio
                 _playback.Time = GetTargetPlaybackTime(time);
         }
 
+        public void StartFailAnimation(AudioSource gameSource,
+            AnimationCurve gainCurve, float duration)
+        {
+            if (gameSource != _mutedGameSource || !_flacActive)
+                return;
+
+            _failGainCurve = gainCurve;
+            _failDuration = duration;
+            _failStartTime = Time.time;
+            _failAnimating = true;
+        }
+
         private float GetTargetPlaybackTime()
         {
             return GetTargetPlaybackTime(_syncController != null
@@ -227,6 +258,11 @@ namespace BSSidecarAudio
             _clipLeadInCompensation = 0f;
             _originalMute = false;
             _gameMixerGroup = null;
+            _lastPitch = 1f;
+            _failGainCurve = null;
+            _failDuration = 0f;
+            _failStartTime = 0f;
+            _failAnimating = false;
             HarmonyPatches.ClearPending();
         }
     }
