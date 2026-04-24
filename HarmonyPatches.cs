@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using HarmonyLib;
 using UnityEngine;
 
@@ -13,11 +15,28 @@ namespace BSSidecarAudio
         internal static float PendingSongTimeOffset { get; private set; }
         internal static bool HasFlac => !string.IsNullOrEmpty(PendingFlacPath);
 
+        private static readonly Dictionary<string, AudioClip> _previewClipCache
+            = new Dictionary<string, AudioClip>();
+        private static readonly List<string> _previewCacheOrder = new List<string>();
+        private const int MaxPreviewCacheSize = 3;
+
         internal static void ClearPending()
         {
             PendingFlacPath = null;
             PendingAudioPath = null;
             PendingSongTimeOffset = 0f;
+        }
+
+        internal static void ClearPreviewCache()
+        {
+            foreach (var kvp in _previewClipCache)
+            {
+                if (kvp.Value != null
+                    && kvp.Value.loadState == AudioDataLoadState.Loaded)
+                    kvp.Value.UnloadAudioData();
+            }
+            _previewClipCache.Clear();
+            _previewCacheOrder.Clear();
         }
 
         [HarmonyPatch(typeof(GameplayCoreInstaller), "InstallBindings")]
@@ -142,6 +161,99 @@ namespace BSSidecarAudio
 
             BSSidecarAudioController.Instance?.StartFailAnimation(
                 audioSource, gainCurve, duration);
+        }
+
+        [HarmonyPatch(typeof(FileSystemPreviewMediaData), "GetPreviewAudioClip")]
+        [HarmonyPrefix]
+        static bool PreviewMedia_GetPreviewAudioClip(
+            ref Task<AudioClip> __result,
+            FileSystemPreviewMediaData __instance)
+        {
+            if (!Configuration.PluginConfig.Instance.Enabled)
+                return true;
+
+            try
+            {
+                string previewPath = Traverse.Create(__instance)
+                    .Field("_previewAudioClipPath").GetValue<string>();
+
+                if (string.IsNullOrEmpty(previewPath))
+                    return true;
+
+                string levelDir = Path.GetDirectoryName(previewPath);
+                string flacPath = Path.Combine(levelDir, "song.flac");
+
+                if (!File.Exists(flacPath))
+                    return true;
+
+                if (_previewClipCache.TryGetValue(flacPath, out var cached))
+                {
+                    Plugin.Log.Debug(
+                        $"Preview: cached FLAC for {Path.GetFileName(levelDir)}");
+                    __result = Task.FromResult(cached);
+                    return false;
+                }
+
+                var clip = SidecarPlayback.LoadFlacAsAudioClip(flacPath);
+
+                while (_previewClipCache.Count >= MaxPreviewCacheSize
+                    && _previewCacheOrder.Count > 0)
+                {
+                    string oldest = _previewCacheOrder[0];
+                    _previewCacheOrder.RemoveAt(0);
+                    if (_previewClipCache.TryGetValue(oldest, out var oldClip))
+                    {
+                        _previewClipCache.Remove(oldest);
+                        if (oldClip != null
+                            && oldClip.loadState == AudioDataLoadState.Loaded)
+                            oldClip.UnloadAudioData();
+                    }
+                }
+
+                _previewClipCache[flacPath] = clip;
+                _previewCacheOrder.Add(flacPath);
+
+                Plugin.Log.Info(
+                    $"Preview: loaded FLAC for {Path.GetFileName(levelDir)}");
+                __result = Task.FromResult(clip);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error($"Preview FLAC substitution failed: {ex}");
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(FileSystemPreviewMediaData), "UnloadPreviewAudioClip")]
+        [HarmonyPostfix]
+        static void PreviewMedia_UnloadPreviewAudioClip(
+            FileSystemPreviewMediaData __instance)
+        {
+            try
+            {
+                string previewPath = Traverse.Create(__instance)
+                    .Field("_previewAudioClipPath").GetValue<string>();
+
+                if (string.IsNullOrEmpty(previewPath))
+                    return;
+
+                string levelDir = Path.GetDirectoryName(previewPath);
+                string flacPath = Path.Combine(levelDir, "song.flac");
+
+                if (_previewClipCache.TryGetValue(flacPath, out var clip))
+                {
+                    _previewClipCache.Remove(flacPath);
+                    _previewCacheOrder.Remove(flacPath);
+                    if (clip != null
+                        && clip.loadState == AudioDataLoadState.Loaded)
+                        clip.UnloadAudioData();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error($"Preview FLAC cleanup failed: {ex}");
+            }
         }
     }
 }

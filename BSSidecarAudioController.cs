@@ -53,6 +53,7 @@ namespace BSSidecarAudio
         private void OnDestroy()
         {
             Cleanup();
+            HarmonyPatches.ClearPreviewCache();
             if (Instance == this) Instance = null;
             Plugin.Log.Debug($"{name}: OnDestroy()");
         }
