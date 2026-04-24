@@ -102,7 +102,7 @@ namespace BSLossless
         {
             using (var reader = new AudioFileReader(path))
             {
-                return ReadEnvelope(reader, reader.WaveFormat.SampleRate,
+                return ReadEnvelope(reader.Read, reader.WaveFormat.SampleRate,
                     reader.WaveFormat.Channels);
             }
         }
@@ -111,68 +111,11 @@ namespace BSLossless
         {
             using (var reader = new VorbisReader(path))
             {
-                return ReadEnvelope(reader, reader.SampleRate, reader.Channels);
+                return ReadEnvelope(reader.ReadSamples, reader.SampleRate, reader.Channels);
             }
         }
 
-        private static float[] ReadEnvelope(ISampleProvider sampleProvider,
-            int sourceSampleRate, int channels)
-        {
-            int targetFrames = AnalysisSeconds * AnalysisSampleRate;
-            int targetSamples = targetFrames * channels;
-            int blockSize = 4096 * channels;
-            float[] sourceBuffer = new float[blockSize];
-            float[] monoSamples = new float[targetFrames];
-            int monoCount = 0;
-            double frameAccumulator = 0d;
-            double sampleRateRatio = (double)sourceSampleRate / AnalysisSampleRate;
-
-            while (monoCount < targetFrames)
-            {
-                int read = sampleProvider.Read(sourceBuffer, 0, sourceBuffer.Length);
-                if (read <= 0)
-                    break;
-
-                int framesRead = read / channels;
-                for (int frame = 0; frame < framesRead && monoCount < targetFrames; frame++)
-                {
-                    float mono = 0f;
-                    int baseIndex = frame * channels;
-                    for (int channel = 0; channel < channels; channel++)
-                        mono += sourceBuffer[baseIndex + channel];
-
-                    mono /= channels;
-                    frameAccumulator += 1d;
-
-                    if (frameAccumulator >= sampleRateRatio)
-                    {
-                        monoSamples[monoCount++] = Math.Abs(mono);
-                        frameAccumulator -= sampleRateRatio;
-                    }
-                }
-            }
-
-            if (monoCount == 0)
-                return Array.Empty<float>();
-
-            int samplesPerEnvelopeFrame = AnalysisSampleRate / EnvelopeFramesPerSecond;
-            int envelopeLength = monoCount / samplesPerEnvelopeFrame;
-            float[] envelope = new float[envelopeLength];
-
-            for (int i = 0; i < envelopeLength; i++)
-            {
-                float sum = 0f;
-                int start = i * samplesPerEnvelopeFrame;
-                for (int j = 0; j < samplesPerEnvelopeFrame; j++)
-                    sum += monoSamples[start + j];
-
-                envelope[i] = sum / samplesPerEnvelopeFrame;
-            }
-
-            return envelope;
-        }
-
-        private static float[] ReadEnvelope(VorbisReader reader,
+        private static float[] ReadEnvelope(Func<float[], int, int, int> sampleReader,
             int sourceSampleRate, int channels)
         {
             int targetFrames = AnalysisSeconds * AnalysisSampleRate;
@@ -185,7 +128,7 @@ namespace BSLossless
 
             while (monoCount < targetFrames)
             {
-                int read = reader.ReadSamples(sourceBuffer, 0, sourceBuffer.Length);
+                int read = sampleReader(sourceBuffer, 0, sourceBuffer.Length);
                 if (read <= 0)
                     break;
 
