@@ -12,13 +12,7 @@ namespace BSLossless
         private GameObject _gameObject;
         private bool _disposed;
         private bool _started;
-        private float _currentVolume = 1f;
-        private float _targetVolume = 1f;
-        private float _pendingSeekTime;
-        private bool _seekPending;
         private float _volumeScale = 1f;
-        public bool SeekPending => _seekPending;
-        private const float FadeDuration = 0.012f;
 
         public float VolumeScale
         {
@@ -26,7 +20,8 @@ namespace BSLossless
             set
             {
                 _volumeScale = value;
-                ApplyVolume();
+                if (_audioSource != null)
+                    _audioSource.volume = _volumeScale;
             }
         }
 
@@ -51,49 +46,6 @@ namespace BSLossless
                     value = Mathf.Clamp(value, 0f, _audioClip.length - 0.001f);
                 _audioSource.time = value;
             }
-        }
-
-        public void QueueSeek(float time)
-        {
-            if (_audioClip != null)
-                time = Mathf.Clamp(time, 0f, _audioClip.length - 0.001f);
-            _pendingSeekTime = time;
-            _seekPending = true;
-            _targetVolume = 0f;
-        }
-
-        public void TickFade(float deltaTime)
-        {
-            if (_audioSource == null)
-                return;
-
-            if (Mathf.Approximately(_currentVolume, _targetVolume)
-                && !_seekPending)
-                return;
-
-            float step = deltaTime / FadeDuration;
-
-            if (_targetVolume < _currentVolume)
-                _currentVolume = Mathf.Max(_targetVolume,
-                    _currentVolume - step);
-            else if (_targetVolume > _currentVolume)
-                _currentVolume = Mathf.Min(_targetVolume,
-                    _currentVolume + step);
-
-            ApplyVolume();
-
-            if (_seekPending && _currentVolume <= 0f)
-            {
-                _audioSource.time = _pendingSeekTime;
-                _seekPending = false;
-                _targetVolume = 1f;
-            }
-        }
-
-        private void ApplyVolume()
-        {
-            if (_audioSource != null)
-                _audioSource.volume = _currentVolume * _volumeScale;
         }
 
         public void Prepare(AudioClip clip, float startTime = 0f,
@@ -162,8 +114,6 @@ namespace BSLossless
             _audioSource = null;
             _started = false;
             _volumeScale = 1f;
-            _currentVolume = 1f;
-            _targetVolume = 1f;
         }
 
         public void Dispose()

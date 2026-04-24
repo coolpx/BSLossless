@@ -63,8 +63,6 @@ namespace BSLossless
             if (!_overrideActive || _playback == null || _syncController == null)
                 return;
 
-            _playback.TickFade(Time.deltaTime);
-
             if (!_playbackStarted)
             {
                 if (!CanStartPreparedPlayback())
@@ -79,23 +77,20 @@ namespace BSLossless
                 ? _mutedGameSource.pitch : 1f;
             _playback.Speed = pitch;
 
-            if (!_playback.SeekPending)
+            float pitchDelta = Mathf.Abs(pitch - _lastPitch);
+            _lastPitch = pitch;
+
+            if (Mathf.Approximately(pitchDelta, 0f))
             {
-                float pitchDelta = Mathf.Abs(pitch - _lastPitch);
-                _lastPitch = pitch;
+                float targetTime = GetTargetPlaybackTime();
+                float currentTime = _playback.Time;
+                float diff = targetTime - currentTime;
+                float threshold =
+                    Configuration.PluginConfig.Instance?.SyncThreshold
+                    ?? 0.05f;
 
-                if (Mathf.Approximately(pitchDelta, 0f))
-                {
-                    float targetTime = GetTargetPlaybackTime();
-                    float currentTime = _playback.Time;
-                    float diff = targetTime - currentTime;
-                    float threshold =
-                        Configuration.PluginConfig.Instance?.SyncThreshold
-                        ?? 0.05f;
-
-                    if (Mathf.Abs(diff) > threshold)
-                        _playback.QueueSeek(targetTime);
-                }
+                if (Mathf.Abs(diff) > threshold)
+                    _playback.Time = targetTime;
             }
 
             if (_failAnimating && _playback != null)
