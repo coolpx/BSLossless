@@ -123,12 +123,6 @@ namespace BSLossless
             _started = true;
         }
 
-        public void Play(AudioClip clip, float startTime = 0f)
-        {
-            Prepare(clip, startTime);
-            Start();
-        }
-
         public void Pause()
         {
             if (_audioSource != null)
