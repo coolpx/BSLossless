@@ -104,7 +104,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $prevTag = git tag --sort=-creatordate | Select-Object -First 1 | Where-Object { $_ -ne $env:GITHUB_REF_NAME }
+          $prevTag = git tag --sort=-creatordate | Where-Object { $_ -ne $env:GITHUB_REF_NAME } | Select-Object -First 1
           if ($prevTag) {
             $range = "$prevTag..HEAD"
           } else {
