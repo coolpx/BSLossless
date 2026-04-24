@@ -1,6 +1,7 @@
 using System;
 using NAudio.Wave;
 using UnityEngine;
+using UnityEngine.Audio;
 
 namespace BSSidecarAudio
 {
@@ -11,11 +12,23 @@ namespace BSSidecarAudio
         private GameObject _gameObject;
         private bool _disposed;
         private bool _started;
+        private float _currentVolume = 1f;
+        private float _targetVolume = 1f;
+        private float _pendingSeekTime;
+        private bool _seekPending;
+        public bool SeekPending => _seekPending;
+        private const float FadeDuration = 0.012f;
 
         public bool IsPlaying => _audioSource != null && _audioSource.isPlaying;
         public float Length => _audioClip != null ? _audioClip.length : 0f;
         public bool IsPrepared => _audioSource != null && _audioClip != null;
         public bool HasStarted => _started;
+
+        public float Speed
+        {
+            get => _audioSource != null ? _audioSource.pitch : 1f;
+            set { if (_audioSource != null) _audioSource.pitch = value; }
+        }
 
         public float Time
         {
@@ -29,7 +42,45 @@ namespace BSSidecarAudio
             }
         }
 
-        public void Prepare(AudioClip clip, float startTime = 0f)
+        public void QueueSeek(float time)
+        {
+            if (_audioClip != null)
+                time = Mathf.Clamp(time, 0f, _audioClip.length - 0.001f);
+            _pendingSeekTime = time;
+            _seekPending = true;
+            _targetVolume = 0f;
+        }
+
+        public void TickFade(float deltaTime)
+        {
+            if (_audioSource == null)
+                return;
+
+            if (Mathf.Approximately(_currentVolume, _targetVolume)
+                && !_seekPending)
+                return;
+
+            float step = deltaTime / FadeDuration;
+
+            if (_targetVolume < _currentVolume)
+                _currentVolume = Mathf.Max(_targetVolume,
+                    _currentVolume - step);
+            else if (_targetVolume > _currentVolume)
+                _currentVolume = Mathf.Min(_targetVolume,
+                    _currentVolume + step);
+
+            _audioSource.volume = _currentVolume;
+
+            if (_seekPending && _currentVolume <= 0f)
+            {
+                _audioSource.time = _pendingSeekTime;
+                _seekPending = false;
+                _targetVolume = 1f;
+            }
+        }
+
+        public void Prepare(AudioClip clip, float startTime = 0f,
+            AudioMixerGroup mixerGroup = null)
         {
             Stop();
             _audioClip = clip;
@@ -41,6 +92,7 @@ namespace BSSidecarAudio
             _audioSource.playOnAwake = false;
             _audioSource.volume = 1f;
             _audioSource.spatialBlend = 0f;
+            _audioSource.outputAudioMixerGroup = mixerGroup;
             _audioSource.time = Mathf.Clamp(startTime, 0f, clip.length - 0.001f);
             _started = false;
         }

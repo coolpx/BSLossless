@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
 using HarmonyLib;
 
@@ -12,6 +13,7 @@ namespace BSSidecarAudio
         private SidecarPlayback _playback;
         private AudioTimeSyncController _syncController;
         private AudioSource _mutedGameSource;
+        private AudioMixerGroup _gameMixerGroup;
         private float _originalVolume;
         private bool _originalMute;
         private bool _flacActive;
@@ -19,6 +21,7 @@ namespace BSSidecarAudio
         private float _audioLatency;
         private float _clipLeadInCompensation;
         private bool _playbackStarted;
+        private float _lastPitch = 1f;
 
         private void Awake()
         {
@@ -55,6 +58,8 @@ namespace BSSidecarAudio
             if (!_flacActive || _playback == null || _syncController == null)
                 return;
 
+            _playback.TickFade(Time.deltaTime);
+
             if (!_playbackStarted)
             {
                 if (!CanStartPreparedPlayback())
@@ -65,14 +70,28 @@ namespace BSSidecarAudio
                 _playbackStarted = true;
             }
 
-            float targetTime = GetTargetPlaybackTime();
-            float currentTime = _playback.Time;
-            float diff = targetTime - currentTime;
-            float threshold = Configuration.PluginConfig.Instance?.SyncThreshold
-                ?? 0.05f;
+            float pitch = _mutedGameSource != null
+                ? _mutedGameSource.pitch : 1f;
+            _playback.Speed = pitch;
 
-            if (Mathf.Abs(diff) > threshold)
-                _playback.Time = targetTime;
+            if (!_playback.SeekPending)
+            {
+                float pitchDelta = Mathf.Abs(pitch - _lastPitch);
+                _lastPitch = pitch;
+
+                if (Mathf.Approximately(pitchDelta, 0f))
+                {
+                    float targetTime = GetTargetPlaybackTime();
+                    float currentTime = _playback.Time;
+                    float diff = targetTime - currentTime;
+                    float threshold =
+                        Configuration.PluginConfig.Instance?.SyncThreshold
+                        ?? 0.05f;
+
+                    if (Mathf.Abs(diff) > threshold)
+                        _playback.QueueSeek(targetTime);
+                }
+            }
 
             if (_syncController.state == AudioTimeSyncController.State.Paused
                 || _syncController.state == AudioTimeSyncController.State.Stopped)
@@ -102,6 +121,7 @@ namespace BSSidecarAudio
                     _mutedGameSource = gameSource;
                     _originalVolume = gameSource.volume;
                     _originalMute = gameSource.mute;
+                    _gameMixerGroup = gameSource.outputAudioMixerGroup;
                     gameSource.mute = true;
                     gameSource.volume = 0f;
                     Plugin.Log.Info("Muted game AudioSource");
@@ -112,7 +132,7 @@ namespace BSSidecarAudio
                     .EstimateLeadInCompensation(referenceAudioPath, flacPath);
                 _playback = new SidecarPlayback();
                 float startTime = GetTargetPlaybackTime();
-                _playback.Prepare(clip, startTime);
+                _playback.Prepare(clip, startTime, _gameMixerGroup);
                 _flacActive = true;
                 _playbackStarted = false;
 
@@ -206,6 +226,7 @@ namespace BSSidecarAudio
             _audioLatency = 0f;
             _clipLeadInCompensation = 0f;
             _originalMute = false;
+            _gameMixerGroup = null;
             HarmonyPatches.ClearPending();
         }
     }
