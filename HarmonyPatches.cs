@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using HarmonyLib;
 using UnityEngine;
 
-namespace BSSidecarAudio
+namespace BSLossless
 {
     [HarmonyPatch]
     static class HarmonyPatches
@@ -132,7 +132,7 @@ namespace BSSidecarAudio
 
             try
             {
-                BSSidecarAudioController.Instance?.StartOverridePlayback(
+                BSLosslessController.Instance?.StartOverridePlayback(
                     __instance, PendingOverridePath, PendingAudioPath, PendingSongTimeOffset);
             }
             catch (Exception ex)
@@ -145,14 +145,14 @@ namespace BSSidecarAudio
         [HarmonyPostfix]
         static void AudioTimeSyncController_Pause()
         {
-            BSSidecarAudioController.Instance?.PauseOverride();
+            BSLosslessController.Instance?.PauseOverride();
         }
 
         [HarmonyPatch(typeof(AudioTimeSyncController), "Resume")]
         [HarmonyPostfix]
         static void AudioTimeSyncController_Resume()
         {
-            BSSidecarAudioController.Instance?.ResumeOverride();
+            BSLosslessController.Instance?.ResumeOverride();
         }
 
         [HarmonyPatch(typeof(AudioTimeSyncController), "SeekTo")]
@@ -160,7 +160,7 @@ namespace BSSidecarAudio
         static void AudioTimeSyncController_SeekTo(
             AudioTimeSyncController __instance)
         {
-            BSSidecarAudioController.Instance?.SeekOverride(__instance.songTime);
+            BSLosslessController.Instance?.SeekOverride(__instance.songTime);
         }
 
         [HarmonyPatch(typeof(AudioPitchGainEffect), "StartEffect")]
@@ -175,7 +175,7 @@ namespace BSSidecarAudio
             var duration = (float)Traverse.Create(__instance)
                 .Field("_duration").GetValue();
 
-            BSSidecarAudioController.Instance?.StartFailAnimation(
+            BSLosslessController.Instance?.StartFailAnimation(
                 audioSource, gainCurve, duration);
         }
 

@@ -1,12 +1,12 @@
-# BSSidecarAudio
+# BSLossless
 
-BSSidecarAudio is a Beat Saber mod which enables high-quality audio playback by allowing you to add alternative audio for songs in formats other than ogg.
+BSLossless is a Beat Saber mod which enables high-quality audio playback by allowing you to add alternative audio for songs in formats other than ogg.
 
 ## Installation
 
 These instructions are written for BSManager.
 
-1. Download the BSSidecarAudio zip from [the latest release](https://github.com/coolpx/BSSidecarAudio/releases/latest)
+1. Download the BSLossless zip from [the latest release](https://github.com/coolpx/BSLossless/releases/latest)
 2. Navigate to the "Mods" tab for your instance in BSManager, click the import button in the bottom right next to "Install or update", and select the zip or drag it in from your downloads.
 
 ## Usage

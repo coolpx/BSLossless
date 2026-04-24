@@ -3,7 +3,7 @@ using NAudio.Wave;
 using UnityEngine;
 using UnityEngine.Audio;
 
-namespace BSSidecarAudio
+namespace BSLossless
 {
     public class SidecarPlayback : IDisposable
     {
@@ -101,7 +101,7 @@ namespace BSSidecarAudio
         {
             Stop();
             _audioClip = clip;
-            _gameObject = new GameObject("BSSidecarPlayer");
+            _gameObject = new GameObject("BSLosslessPlayer");
             GameObject.DontDestroyOnLoad(_gameObject);
             _audioSource = _gameObject.AddComponent<AudioSource>();
             _audioSource.clip = _audioClip;
@@ -212,7 +212,7 @@ namespace BSSidecarAudio
                     Array.Copy(samples, clipSamples, totalRead);
                 }
 
-                var clip = AudioClip.Create("BSSidecarAudio", actualFrames,
+                var clip = AudioClip.Create("BSLossless", actualFrames,
                     channels, sampleRate, false);
                 clip.SetData(clipSamples, 0);
 

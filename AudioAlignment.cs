@@ -2,7 +2,7 @@ using System;
 using NAudio.Wave;
 using NVorbis;
 
-namespace BSSidecarAudio
+namespace BSLossless
 {
     internal static class AudioAlignment
     {

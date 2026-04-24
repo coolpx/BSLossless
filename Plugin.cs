@@ -5,7 +5,7 @@ using UnityEngine;
 using HarmonyLib;
 using IPALogger = IPA.Logging.Logger;
 
-namespace BSSidecarAudio
+namespace BSLossless
 {
     [Plugin(RuntimeOptions.SingleStartInit)]
     public class Plugin
@@ -20,15 +20,15 @@ namespace BSSidecarAudio
             Instance = this;
             Log = logger;
             Configuration.PluginConfig.Instance = conf.Generated<Configuration.PluginConfig>();
-            _harmony = new Harmony("com.coolpixels.bssidecaraudio");
+            _harmony = new Harmony("com.coolpixels.bslossless");
             _harmony.PatchAll(typeof(Plugin).Assembly);
-            Log.Info("BSSidecarAudio initialized.");
+            Log.Info("BSLossless initialized.");
         }
 
         [OnStart]
         public void OnApplicationStart()
         {
-            new GameObject("BSSidecarAudioController").AddComponent<BSSidecarAudioController>();
+            new GameObject("BSLosslessController").AddComponent<BSLosslessController>();
         }
 
         [OnExit]

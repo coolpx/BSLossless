@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using IPA.Config.Stores;
 
 [assembly: InternalsVisibleTo(GeneratedStore.AssemblyVisibilityTarget)]
-namespace BSSidecarAudio.Configuration
+namespace BSLossless.Configuration
 {
     internal class PluginConfig
     {

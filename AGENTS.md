@@ -1,4 +1,4 @@
-# BSSidecarAudio
+# BSLossless
 
 ## Purpose
 Beat Saber IPA plugin. Swap map audio with `override.*` (flac, wav, mp3, etc.) when file exists beside stock map audio. Keep Beat Saber timing source. Mute game `AudioSource`. Drive sidecar `AudioSource` from game clock.
@@ -6,7 +6,7 @@ Beat Saber IPA plugin. Swap map audio with `override.*` (flac, wav, mp3, etc.) w
 ## File Map
 - `Plugin.cs`: IPA entry. Load config. Install Harmony patches. Spawn persistent controller.
 - `HarmonyPatches.cs`: Detect `override.*` during gameplay install. Cache paths + `songTimeOffset`. Forward Start/Pause/Resume/Seek hooks into controller.
-- `BSSidecarAudioController.cs`: Runtime brain. Mute/unmute game source. Prepare sidecar playback. Apply latency + map offset + lead-in compensation. Resync in `LateUpdate`.
+- `BSLosslessController.cs`: Runtime brain. Mute/unmute game source. Prepare sidecar playback. Apply latency + map offset + lead-in compensation. Resync in `LateUpdate`.
 - `SidecarPlayback.cs`: Thin Unity `AudioSource` wrapper. Load override via NAudio. Create/destroy `GameObject`. Clamp seeks. Track prepared/started state.
 - `AudioAlignment.cs`: Compare Vorbis map audio vs override envelope. Estimate override lead-in trim compensation. Defensive fallback = `0f`.
 - `Configuration/PluginConfig.cs`: `Enabled`, `SyncThreshold`.

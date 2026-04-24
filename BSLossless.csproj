@@ -8,8 +8,8 @@
     <ProjectGuid>{6D54DF2D-0967-4A74-B1CA-D2E019CAEE7D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>BSSidecarAudio</RootNamespace>
-    <AssemblyName>BSSidecarAudio</AssemblyName>
+    <RootNamespace>BSLossless</RootNamespace>
+    <AssemblyName>BSLossless</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <DebugSymbols>true</DebugSymbols>
@@ -129,7 +129,7 @@
   <ItemGroup>
     <Compile Include="Plugin.cs" />
     <Compile Include="Configuration\PluginConfig.cs" />
-    <Compile Include="BSSidecarAudioController.cs" />
+    <Compile Include="BSLosslessController.cs" />
     <Compile Include="AudioAlignment.cs" />
     <Compile Include="SidecarPlayback.cs" />
     <Compile Include="HarmonyPatches.cs" />
@@ -140,7 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Directory.Build.props" Condition="Exists('Directory.Build.props')" />
-    <None Include="BSSidecarAudio.csproj.user" Condition="Exists('BSSidecarAudio.csproj.user')" />
+    <None Include="BSLossless.csproj.user" Condition="Exists('BSLossless.csproj.user')" />
     <None Include="manifest.template.json" />
     <None Include="Properties\AssemblyInfo.template.cs" />
   </ItemGroup>

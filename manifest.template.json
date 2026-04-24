@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/bsmg/BSIPA-MetadataFileSchema/master/Schema.json",
-  "id": "BSSidecarAudio",
-  "name": "BSSidecarAudio",
+  "id": "BSLossless",
+  "name": "BSLossless",
   "author": "coolpixels",
   "version": "__VERSION__",
   "description": "Lossless playback in* Beat Saber",

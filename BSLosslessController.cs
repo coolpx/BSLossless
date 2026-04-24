@@ -4,11 +4,11 @@ using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
 using HarmonyLib;
 
-namespace BSSidecarAudio
+namespace BSLossless
 {
-    public class BSSidecarAudioController : MonoBehaviour
+    public class BSLosslessController : MonoBehaviour
     {
-        public static BSSidecarAudioController Instance { get; private set; }
+        public static BSLosslessController Instance { get; private set; }
 
         private SidecarPlayback _playback;
         private AudioTimeSyncController _syncController;
